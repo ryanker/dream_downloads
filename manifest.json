@@ -1,0 +1,17 @@
+{
+  "name": "梦想网页资源下载器",
+  "description": "一款网页资源下载器，可一键下载网页的所有 JS/CSS/HTML 文件。",
+  "version": "1.0",
+  "manifest_version": 2,
+  "icons": {
+    "128": "128.png"
+  },
+  "permissions": [
+    "\u003Call_urls>"
+  ],
+  "devtools_page": "devtools.html",
+  "homepage_url": "https://github.com/ryanker/dream_downloads",
+  "update_url": "https://clients2.google.com/service/update2/crx"
+}
+
+
