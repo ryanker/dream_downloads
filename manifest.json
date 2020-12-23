@@ -1,6 +1,6 @@
 {
   "name": "梦想网页资源下载器",
-  "description": "一款网页资源下载器，可一键下载网页的所有 JS/CSS/HTML 文件。",
+  "description": "一款轻量级网页资源下载器，可通过浏览器抓包并打包下载网页资源（JS/CSS/HTML等）。",
   "version": "1.0",
   "manifest_version": 2,
   "icons": {
