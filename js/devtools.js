@@ -3,6 +3,6 @@ chrome.devtools.panels.create(
     "128.png",
     "panel.html",
     function (panel) {
-        console.log('panel', panel)
+        console.log('panel', new Date().toLocaleString(), panel)
     }
 )
