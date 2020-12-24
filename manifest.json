@@ -6,13 +6,10 @@
   "icons": {
     "128": "128.png"
   },
-  "permissions": [
-    "activeTab"
-  ],
   "browser_action": {
     "default_popup": "popup.html"
   },
   "devtools_page": "devtools.html",
-  "homepage_url": "https://github.com/ryanker/dream_downloads",
-  "update_url": "https://clients2.google.com/service/update2/crx"
+  "update_url": "https://clients2.google.com/service/update2/crx",
+  "homepage_url": "https://github.com/ryanker/dream_downloads"
 }

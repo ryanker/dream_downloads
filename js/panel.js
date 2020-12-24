@@ -166,12 +166,18 @@ async function onDownload() {
         zip.file('log.har.json', JSON.stringify(harLog, null, '\t')) // 全部HAR日志 JSON
     }).catch(err => console.warn('getResources error:', err))
 
+    // 获取网页 host
+    let host = ''
+    await getLocation().then(r => {
+        if (r?.host) host = r.host + '-'
+    }).catch(err => console.warn('getLocation error:', err))
+
     // 生成 zip 包，并下载文件
     await zip.generateAsync({type: "blob"}).then(function (blob) {
         // console.log('blob:', blob)
         let el = document.createElement('a')
         el.href = window.URL.createObjectURL(blob)
-        el.download = `梦想网页资源下载器-${getDate()}.zip`
+        el.download = `梦想网页资源下载器-${host}${getDate()}.zip`
         el.click()
     }).catch(err => console.warn('zip generateAsync error:', err))
 
@@ -278,6 +284,7 @@ function getResources() {
     return new Promise((resolve, reject) => {
         if (isFirefox) {
             reject('Firefox 未实现此接口')
+            // see https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/devtools.inspectedWindow
             // devtools.inspectedWindow.getResources().then(resources => resolve(resources)).catch(err => reject(err))
         } else {
             devtools.inspectedWindow.getResources(resources => resolve(resources))
@@ -289,12 +296,28 @@ function getResources() {
 function getHAR() {
     return new Promise((resolve, reject) => {
         if (isFirefox) {
-            // 已经无力吐槽了，官方文档 Examples 还是个错的。这接口和 Chromium 的一模一样嘛，不过内容比 chrome 多，包含内容。
+            // 已经无力吐槽了，官方文档 Examples 还是个错的。这接口和 Chromium 的一模一样嘛，不过数据比 chrome 多，包含文件数据。
             // see https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/devtools.network/getHAR
             // devtools.network.getHAR().then(harLog => resolve(harLog)).catch(err => reject(err))
             devtools.network.getHAR(harLog => resolve(harLog))
         } else {
             devtools.network.getHAR(harLog => resolve(harLog))
+        }
+    })
+}
+
+// 获取网页 Location
+function getLocation() {
+    return new Promise((resolve, reject) => {
+        if (isFirefox) {
+            // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/devtools.inspectedWindow/eval
+            browser.devtools.inspectedWindow.eval('location').then(r => r[0] ? resolve(r[0]) : reject(r[1]))
+        } else {
+            // todo: 此接口，估计 Manifest V3，会做调整
+            // see https://developer.chrome.com/docs/extensions/reference/devtools_inspectedWindow/
+            chrome.devtools.inspectedWindow.eval('location', (result, exceptionInfo) => {
+                !exceptionInfo ? resolve(result) : reject(exceptionInfo)
+            })
         }
     })
 }
