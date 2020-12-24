@@ -165,7 +165,7 @@ async function onDownload() {
         // console.log('blob:', blob)
         let el = document.createElement('a')
         el.href = window.URL.createObjectURL(blob)
-        el.download = `梦想网页资源下载器.zip`
+        el.download = `梦想网页资源下载器-${getDate()}.zip`
         el.click()
     }).catch(err => console.warn('zip generateAsync error:', err))
 }
@@ -299,6 +299,17 @@ function getHAR() {
             devtools.network.getHAR(harLog => resolve(harLog))
         }
     })
+}
+
+// 获取当前时间
+function getDate() {
+    let d = new Date()
+    d.setMinutes(-d.getTimezoneOffset() + d.getMinutes(), d.getSeconds(), 0)
+    let s = d.toISOString()
+    s = s.replace('T', ' ')
+    s = s.replace('.000Z', '')
+    s = s.replace(/\D/g, '')
+    return s
 }
 
 // 人类易读文件大小
