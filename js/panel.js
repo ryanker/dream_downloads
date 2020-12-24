@@ -289,7 +289,10 @@ function getResources() {
 function getHAR() {
     return new Promise((resolve, reject) => {
         if (isFirefox) {
-            devtools.network.getHAR().then(harLog => resolve(harLog)).catch(err => reject(err))
+            // 已经无力吐槽了，官方文档 Examples 还是个错的。这接口和 Chromium 的一模一样嘛，不过内容比 chrome 多，包含内容。
+            // see https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/devtools.network/getHAR
+            // devtools.network.getHAR().then(harLog => resolve(harLog)).catch(err => reject(err))
+            devtools.network.getHAR(harLog => resolve(harLog))
         } else {
             devtools.network.getHAR(harLog => resolve(harLog))
         }
