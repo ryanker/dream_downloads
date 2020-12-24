@@ -97,7 +97,7 @@ async function onDownload() {
 
     // 打包日志
     zip.file('log.requests.json', JSON.stringify(requests, null, '\t')) // 请求资源 JSON
-    zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求资源 JSON
+    requestNum > requests.length && zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求资源 JSON
     if (!isFirefox) {
         await getResources().then(resources => {
             zip.file('log.resources.json', JSON.stringify(resources, null, '\t')) // 全部资源 JSON
@@ -139,13 +139,18 @@ async function onDownload() {
             let dirname = getDir(u.pathname)
             let filename = getFixFilename(u.pathname, mimeType)
             let zipName = method + '-' + u.host + dirname + filename
+
+            // Firefox 抄 Chromium API 都抄的不一致，这是要折腾死开发者吗？设计者这 API 的工程师脑子秀逗了？明显 Chromium API 更好用，更明确！
+            // see https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/devtools.network/onRequestFinished
+            if (isFirefox) encoding = response.content.encoding
             if (encoding) {
-                logEncoding += `${encoding}\t${status}\t${method}\t${size}\t${url}\n` // 记录有编码的文件日志
+                logEncoding += `${status}\t${method}\t${encoding}\t${size}\t${url}\n` // 记录有编码的文件日志
                 zip.file(zipName, content, {base64: encoding === 'base64'}) // 目前浏览器只支持 base64 编码
             } else {
                 zip.file(zipName, content)
             }
             log += `${status}\t${method}\t${size}\t${url}\t${zipName}\n` // 记录压缩正常日志
+
             // console.log('key:', k)
             // console.log('url:', url)
             // console.log('zip:', zipName)
