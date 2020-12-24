@@ -49,9 +49,8 @@ function onRequest(r) {
         if (!excluded[uri]) excluded[uri] = 1
         excluded[uri]++
 
-        // 清除重复记录，保留最后一次的资源
-        requests.splice(index, 1)
-        requests.push(r) // 记录请求资源
+        // 清除重复记录，保留最后一次的资源 (替换后，索引位置不变)
+        requests.splice(index, 1, r)
         // itemsEl.querySelector(`tr:nth-of-type(${index + 1})`)?.remove()
         return
     }
