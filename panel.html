@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css/panel.css">
+    <title>panel</title>
+</head>
+<body>
+<div class="header">
+    <div id="toolbar">
+        <span class="icon icon-start active" title="停止资源获取" id="switchBut"></span>
+        <span class="icon icon-delete" title="清空资源" id="clearBut"></span>
+    </div>
+    <div id="statistics"></div>
+    <div id="resources"></div>
+    <div id="head_right">
+        <div class="dmx_button" id="download"><i class="icon icon-download"></i>下载资源</div>
+    </div>
+</div>
+<div id="table_head">
+    <table>
+        <tr>
+            <th class="tb_method">方法</th>
+            <th class="tb_host">域名</th>
+            <th class="tb_path">文件</th>
+            <th class="tb_type">类型</th>
+            <th class="tb_size">大小</th>
+            <th class="tb_status">状态</th>
+        </tr>
+    </table>
+</div>
+<div id="table_body">
+    <table id="items"></table>
+</div>
+<div id="table_empty">
+    请打开新链接或 <span id="refresh"><i class="icon icon-refresh"></i> 重新加载</span> 此网页开始获取资源。
+</div>
+</body>
+<script src="js/jszip.min.js"></script>
+<script src="js/panel.js"></script>
+</html>
