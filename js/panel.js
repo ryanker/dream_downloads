@@ -18,7 +18,7 @@ let table_empty = document.getElementById('table_empty')
 let requestNum = 0 // 总请求数
 let totalSize = 0 // 总文件大小
 let uriArr = [] // 记录地址
-let requests = [] // 记录请求
+let contents = {} // 记录所有资源内容 (数据比较大，访问过程中，直接保存在内存中，所以受内存大小限制)
 let excluded = {} // 被排除的重复请求
 
 devtools.network.onRequestFinished.addListener(onRequest) // 网络请求完成
@@ -36,21 +36,27 @@ function onRequest(r) {
     let status = response.status
     let content = response.content
 
-    // 根据请求地址排重
+    // 请求地址
     let url = request.url
     let method = request.method
     let uri = method + '-' + url
+
+    // 根据 uri 排重后，保存文件内容到内存中
+    getContent(r).then(data => {
+        contents[uri] = {req: r, data}
+    })
+
+    // 根据请求地址排重
     let index = uriArr.indexOf(uri)
     if (index === -1) {
         uriArr.push(uri) // 记录请求地址
-        requests.push(r) // 记录请求资源
     } else {
         // 记录重复记录
         if (!excluded[uri]) excluded[uri] = 1
         excluded[uri]++
 
         // 清除重复记录，保留最后一次的资源 (替换后，索引位置不变)
-        requests.splice(index, 1, r)
+        // requests.splice(index, 1, r)
         // itemsEl.querySelector(`tr:nth-of-type(${index + 1})`)?.remove()
         return
     }
@@ -80,7 +86,7 @@ function onRequest(r) {
         host = u.host
     }
 
-    if (requests.length < 2) showTable() // 显示表格
+    if (uriArr.length < 2) showTable() // 显示表格
     appendTable({status, method, host, pathname, url, mimeType, size}) // 追加表格
     statHTML() // 统计信息
     uniformWidth() // 统一宽度
@@ -99,13 +105,16 @@ async function onDownload() {
 
     // 遍历请求，获取资源并打包
     let zip = new JSZip()
-    for (const [k, v] of Object.entries(requests)) {
+    let j = 0
+    for (let k in contents) {
+        let v = contents[k]
+        j++
         // Firefox 性能不行，给显示一个进度
-        if (isFirefox) document.getElementById('loadingText').textContent = `生成 ${Number(k) + 1}/${requests.length}`
+        if (isFirefox) document.getElementById('loadingText').textContent = `生成 ${j}/${uriArr.length}`
 
         // 初始变量
-        let request = v.request
-        let response = v.response
+        let request = v.req.request
+        let response = v.req.response
         let status = response.status
         let url = request.url
         let method = request.method
@@ -121,34 +130,38 @@ async function onDownload() {
         }
 
         // 获取资源并打包
-        await getContent(v).then(r => {
-            let {content, encoding} = r
-            if (!content) {
-                logErr += `${status}\t${method}\t${humanSize(size)}\t${url}\n` // 记录文件内容为空的日志
-                return
-            }
+        let {content, encoding} = v.data
+        // if (!content) {
+        //     await getContent(v).then(r => {
+        //         content = r.content
+        //         encoding = r.encoding
+        //     }).catch(err => console.warn('getContent error:', err))
+        // }
+        if (!content) {
+            logErr += `${status}\t${method}\t${humanSize(size)}\t${url}\n` // 记录文件内容为空的日志
+            continue
+        }
 
-            // 生成 zip 路径
-            let u = new URL(url)
-            let dirname = getDir(u.pathname)
-            let filename = getFixFilename(u.pathname, mimeType)
-            let zipName = method + '-' + u.host + dirname + filename
+        // 生成 zip 路径
+        let u = new URL(url)
+        let dirname = getDir(u.pathname)
+        let filename = getFixFilename(u.pathname, mimeType)
+        let zipName = method + '-' + u.host + dirname + filename
 
-            // Firefox 抄 Chromium API 都抄的不一致，这是要折腾死开发者吗？设计者这 API 的工程师脑子秀逗了？明显 Chromium API 更好用，更明确！
-            // see https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/devtools.network/onRequestFinished
-            if (isFirefox) encoding = response.content.encoding
-            if (encoding) {
-                logEncoding += `${status}\t${method}\t${encoding}\t${size}\t${url}\n` // 记录有编码的文件日志
-                zip.file(zipName, content, {base64: encoding === 'base64'}) // 目前浏览器只支持 base64 编码
-            } else {
-                zip.file(zipName, content)
-            }
-            log += `${status}\t${method}\t${size}\t${url}\t${zipName}\n` // 记录压缩正常日志
+        // Firefox 抄 Chromium API 都抄的不一致，这是要折腾死开发者吗？设计者这 API 的工程师脑子秀逗了？明显 Chromium API 更好用，更明确！
+        // see https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/devtools.network/onRequestFinished
+        if (isFirefox) encoding = response.content.encoding
+        if (encoding) {
+            logEncoding += `${status}\t${method}\t${encoding}\t${size}\t${url}\n` // 记录有编码的文件日志
+            zip.file(zipName, content, {base64: encoding === 'base64'}) // 目前浏览器只支持 base64 编码
+        } else {
+            zip.file(zipName, content)
+        }
+        log += `${status}\t${method}\t${size}\t${url}\t${zipName}\n` // 记录压缩正常日志
 
-            // console.log('key:', k)
-            // console.log('url:', url)
-            // console.log('zip:', zipName)
-        }).catch(err => console.warn('getContent error:', err))
+        // console.log('key:', k)
+        // console.log('url:', url)
+        // console.log('zip:', zipName)
     }
 
     // 打包日志
@@ -210,7 +223,7 @@ function onClear() {
     requestNum = 0 // 总请求数
     totalSize = 0 // 总文件大小
     uriArr = [] // 记录地址
-    requests = [] // 记录请求
+    contents = {} // 请求资源
     excluded = {} // 被排除的请求
     statEl.innerText = ''
     resEl.innerText = ''
