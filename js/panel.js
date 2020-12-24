@@ -168,8 +168,8 @@ async function onDownload() {
     zip.file('log.txt', log) // 正常日志
     zip.file('log.err.txt', logErr) // 错误日志
     zip.file('log.encoding.txt', logEncoding) // 有编码的文件日志
-    zip.file('log.requests.json', JSON.stringify(requests, null, '\t')) // 请求资源 JSON
-    requestNum > requests.length && zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求资源 JSON
+    zip.file('log.contents.json', JSON.stringify(contents, null, '\t')) // 请求资源 JSON
+    requestNum > uriArr.length && zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求资源 JSON
     if (!isFirefox) {
         await getResources().then(resources => {
             zip.file('log.resources.json', JSON.stringify(resources, null, '\t')) // 全部资源 JSON
