@@ -95,7 +95,7 @@ async function onDownload() {
 
     // 添加 loading
     addLoading('正在打包...')
-    setTimeout(rmLoading, 30 * 1000) // 超时时间
+    setTimeout(rmLoading, 60 * 1000) // 超时时间
 
     // 遍历请求，获取资源并打包
     let zip = new JSZip()
