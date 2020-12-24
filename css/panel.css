@@ -329,3 +329,50 @@ input[type=radio], input[type=checkbox] {
     border: 1px solid #dcdfe6;
     color: #606266;
 }
+
+/* loading */
+.loading, .loading-bg {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+}
+
+.loading-bg {
+    z-index: 8;
+    background: #333;
+    opacity: 0.8;
+}
+
+.loading {
+    z-index: 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading .loading_inner {
+    text-align: center;
+}
+
+.loading .loading_inner .icon-loading {
+    display: inline-block;
+    font-size: 30pt;
+    color: #67c23a;
+    animation: spin 1.5s infinite linear;
+}
+
+.loading .loading_inner .load_text {
+    margin-top: 8px;
+    color: #fff;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(360deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}

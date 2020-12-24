@@ -93,9 +93,13 @@ async function onDownload() {
     let log = '' // 正常日志
     let logErr = '' // 错误日志
     let logEncoding = '' // 有编码的文件日志
-    let zip = new JSZip()
+
+    // 添加 loading
+    addLoading('正在打包...')
+    setTimeout(rmLoading, 30 * 1000) // 超时时间
 
     // 遍历请求，获取资源并打包
+    let zip = new JSZip()
     for (const [k, v] of Object.entries(requests)) {
         // 初始变量
         let request = v.request
@@ -168,6 +172,9 @@ async function onDownload() {
         el.download = `梦想网页资源下载器-${getDate()}.zip`
         el.click()
     }).catch(err => console.warn('zip generateAsync error:', err))
+
+    // 关闭 loading
+    rmLoading()
 }
 
 // 重新载入页面
@@ -327,6 +334,34 @@ function humanSize(n) {
     } else {
         return (n / 1024 / 1024 / 1024 / 1024 / 1024).toFixed(2) + ' P'
     }
+}
+
+// 添加 loading
+function addLoading(text) {
+    let d1 = addEl('div', 'load_img')
+    let d2 = addEl('div', 'load_text', text)
+    let d3 = addEl('div', 'loading_inner')
+    let d4 = addEl('div', 'loading')
+    d1.appendChild(addEl('i', 'icon icon-loading'))
+    d3.appendChild(d1)
+    d3.appendChild(d2)
+    d4.appendChild(d3)
+    document.body.appendChild(d4)
+    document.body.appendChild(addEl('div', 'loading-bg'))
+}
+
+// 删除 loading
+function rmLoading() {
+    document.querySelectorAll('.loading-bg,.loading').forEach(el => el.remove())
+}
+
+// 添加 DOM 元素
+function addEl(tag, className, text, title) {
+    let el = document.createElement(tag)
+    if (className) el.className = className
+    if (text) el.textContent = text
+    if (title) el.title = title
+    return el
 }
 
 // 添加样式
