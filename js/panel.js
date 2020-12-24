@@ -95,18 +95,6 @@ async function onDownload() {
     let logEncoding = '' // 有编码的文件日志
     let zip = new JSZip()
 
-    // 打包日志
-    zip.file('log.requests.json', JSON.stringify(requests, null, '\t')) // 请求资源 JSON
-    requestNum > requests.length && zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求资源 JSON
-    if (!isFirefox) {
-        await getResources().then(resources => {
-            zip.file('log.resources.json', JSON.stringify(resources, null, '\t')) // 全部资源 JSON
-        }).catch(err => console.warn('getResources error:', err))
-    }
-    await getHAR().then(harLog => {
-        zip.file('log.har.json', JSON.stringify(harLog, null, '\t')) // 全部HAR日志 JSON
-    }).catch(err => console.warn('getResources error:', err))
-
     // 遍历请求，获取资源并打包
     for (const [k, v] of Object.entries(requests)) {
         // 初始变量
@@ -161,7 +149,18 @@ async function onDownload() {
     zip.file('log.txt', log) // 正常日志
     zip.file('log.err.txt', logErr) // 错误日志
     zip.file('log.encoding.txt', logEncoding) // 有编码的文件日志
+    zip.file('log.requests.json', JSON.stringify(requests, null, '\t')) // 请求资源 JSON
+    requestNum > requests.length && zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求资源 JSON
+    if (!isFirefox) {
+        await getResources().then(resources => {
+            zip.file('log.resources.json', JSON.stringify(resources, null, '\t')) // 全部资源 JSON
+        }).catch(err => console.warn('getResources error:', err))
+    }
+    await getHAR().then(harLog => {
+        zip.file('log.har.json', JSON.stringify(harLog, null, '\t')) // 全部HAR日志 JSON
+    }).catch(err => console.warn('getResources error:', err))
 
+    // 生成 zip 包，并下载文件
     await zip.generateAsync({type: "blob"}).then(function (blob) {
         // console.log('blob:', blob)
         let el = document.createElement('a')
