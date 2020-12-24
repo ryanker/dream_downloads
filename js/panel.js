@@ -223,37 +223,23 @@ function showTable() {
 
 // 表格数据
 function appendTable(data) {
-    let addTd = function (className, text, title) {
-        let td = document.createElement('td')
-        td.className = className
-        td.textContent = text
-        if (title) td.title = title
-        return td
-    }
-
-    let tr = document.createElement('tr')
-    if (isErrorStatus(data.status)) tr.className = 'red'
-    tr.appendChild(addTd('tb_method', data.method))
-    tr.appendChild(addTd('tb_host', data.host))
-    tr.appendChild(addTd('tb_path', data.pathname, data.url))
-    tr.appendChild(addTd('tb_type', data.mimeType))
-    tr.appendChild(addTd('tb_size', humanSize(data.size)))
-    tr.appendChild(addTd('tb_status', data.status))
+    let tr = addEl('tr', isErrorStatus(data.status) ? 'red' : '')
+    tr.appendChild(addEl('td', 'tb_method', data.method))
+    tr.appendChild(addEl('td', 'tb_host', data.host))
+    tr.appendChild(addEl('td', 'tb_path', data.pathname, data.url))
+    tr.appendChild(addEl('td', 'tb_type', data.mimeType))
+    tr.appendChild(addEl('td', 'tb_size', humanSize(data.size)))
+    tr.appendChild(addEl('td', 'tb_status', data.status))
     itemsEl.appendChild(tr)
 }
 
 // 统计信息
 function statHTML() {
     statEl.innerText = ''
-    let addEl = function (text) {
-        let u = document.createElement('u')
-        u.textContent = text
-        return u
-    }
-    statEl.appendChild(addEl('总大小 ' + humanSize(totalSize)))
-    statEl.appendChild(addEl('总请求 ' + requestNum))
-    statEl.appendChild(addEl('重复请求 ' + (requestNum - uriArr.length)))
-    statEl.appendChild(addEl('实际请求 ' + uriArr.length))
+    statEl.appendChild(addEl('u', '', '总大小 ' + humanSize(totalSize)))
+    statEl.appendChild(addEl('u', '', '总请求 ' + requestNum))
+    statEl.appendChild(addEl('u', '', '重复请求 ' + (requestNum - uriArr.length)))
+    statEl.appendChild(addEl('u', '', '实际请求 ' + uriArr.length))
 }
 
 // 统一宽度
