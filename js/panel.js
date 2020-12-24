@@ -101,6 +101,9 @@ async function onDownload() {
     // 遍历请求，获取资源并打包
     let zip = new JSZip()
     for (const [k, v] of Object.entries(requests)) {
+        // Firefox 性能不行，给显示一个进度
+        if (isFirefox) document.getElementById('loadingText').textContent = `生成 ${Number(k) + 1}/${requests.length}`
+
         // 初始变量
         let request = v.request
         let response = v.response
@@ -328,6 +331,7 @@ function addLoading(text) {
     let d2 = addEl('div', 'load_text', text)
     let d3 = addEl('div', 'loading_inner')
     let d4 = addEl('div', 'loading')
+    d2.id = 'loadingText'
     d1.appendChild(addEl('i', 'icon icon-loading'))
     d3.appendChild(d1)
     d3.appendChild(d2)
