@@ -188,18 +188,12 @@ async function onDownload() {
         zip.file('log.har.json', JSON.stringify(harLog, null, '\t')) // 全部HAR日志 JSON
     }).catch(err => console.warn('getResources error:', err))
 
-    // 获取网页 host
-    let host = ''
-    await getLocation().then(r => {
-        if (r?.host) host = r.host + '-'
-    }).catch(err => console.warn('getLocation error:', err))
-
     // 生成 zip 包，并下载文件
     await zip.generateAsync({type: "blob"}).then(function (blob) {
         // console.log('blob:', blob)
         let el = document.createElement('a')
         el.href = window.URL.createObjectURL(blob)
-        el.download = `梦想网页资源下载器-${host}${getDate()}.zip`
+        el.download = `梦想网页资源下载器-${getDomain()}-${getDate()}.zip`
         el.click()
     }).catch(err => console.warn('zip generateAsync error:', err))
 
@@ -357,8 +351,14 @@ function getHAR() {
     })
 }
 
+// 获取请求链接域名
+function getDomain() {
+    let u = new URL(navUrl)
+    return u.host || u.protocol.replace(/\W/g, '') || 'unknown'
+}
+
 // 获取网页 Location
-function getLocation() {
+/*function getLocation() {
     return new Promise((resolve, reject) => {
         if (isFirefox) {
             // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/devtools.inspectedWindow/eval
@@ -371,7 +371,7 @@ function getLocation() {
             })
         }
     })
-}
+}*/
 
 // 获取当前时间
 function getDate() {
