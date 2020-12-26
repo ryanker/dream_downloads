@@ -232,8 +232,8 @@ function onClear() {
     requestNum = 0 // 总请求数
     totalSize = 0 // 总文件大小
     uriArr = [] // 排重地址
-    contents = {} // 请求资源
-    excluded = {} // 被排除的请求
+    contents = {} // 记录所有资源内容
+    excluded = {} // 被排除的重复请求
     navUrl = '' // 当前访问链接
     urlArr = [] // 所有访问链接
     resObj = {} // 所有资源数据
@@ -289,6 +289,7 @@ function resourceNum() {
     if (window._rT) _clearTimeout(window._rT)
     window._rT = setTimeout(() => {
         getResources().then(r => {
+            resObj[navUrl] = r // 按照请求链接，记录数据
             resNumEl.innerText = ''
             resNumEl.appendChild(addEl('u', 'info', '资源数 ' + r.length))
         }).catch(err => console.warn('getResources error:', err))
@@ -300,6 +301,7 @@ function harLogNum() {
     if (window._hT) _clearTimeout(window._hT)
     window._hT = setTimeout(() => {
         getHAR().then(r => {
+            harObj[navUrl] = r // 按照请求链接，记录数据
             harNumEl.innerText = ''
             harNumEl.appendChild(addEl('u', 'info', 'HAR日志数 ' + r.entries.length))
         }).catch(err => console.warn('getHAR error:', err))
