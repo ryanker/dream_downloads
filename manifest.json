@@ -10,6 +10,5 @@
     "default_popup": "popup.html"
   },
   "devtools_page": "devtools.html",
-  "update_url": "https://clients2.google.com/service/update2/crx",
   "homepage_url": "https://github.com/ryanker/dream_downloads"
 }

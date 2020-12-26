@@ -5,7 +5,8 @@ const devtools = chrome.devtools
 
 let itemsEl = document.getElementById('items')
 let statEl = document.getElementById('statistics')
-let resEl = document.getElementById('resources')
+let resNumEl = document.getElementById('resourceNum')
+let harNumEl = document.getElementById('harNum')
 let downloadEl = document.getElementById('download')
 let refreshEl = document.getElementById('refresh')
 let switchBut = document.getElementById('switchBut')
@@ -17,10 +18,17 @@ let table_empty = document.getElementById('table_empty')
 
 let requestNum = 0 // 总请求数
 let totalSize = 0 // 总文件大小
-let uriArr = [] // 记录地址
+let uriArr = [] // 排重地址
 let contents = {} // 记录所有资源内容 (数据比较大，访问过程中，直接保存在内存中，所以受内存大小限制)
 let excluded = {} // 被排除的重复请求
-
+let navUrl = '' // 当前访问链接
+let urlArr = [] // 所有访问链接
+let resObj = {} // 所有资源数据
+let harObj = {} // 所有 HAR 日志
+devtools.network.onNavigated.addListener(function (url) {
+    navUrl = url
+    urlArr.push(url)
+})
 devtools.network.onRequestFinished.addListener(onRequest) // 网络请求完成
 downloadEl.addEventListener('click', onDownload) // 下载资源
 refreshEl.addEventListener('click', onRefresh) // 重新载入页面
@@ -88,9 +96,10 @@ function onRequest(r) {
 
     if (uriArr.length < 2) showTable() // 显示表格
     appendTable({status, method, host, pathname, url, mimeType, size}) // 追加表格
-    statHTML() // 统计信息
+    statText() // 统计信息
     uniformWidth() // 统一宽度
     !isFirefox && resourceNum() // 统计资源数
+    harLogNum() // 统计HAR日志数
 }
 
 // 下载资源
@@ -222,11 +231,17 @@ function onSwitch() {
 function onClear() {
     requestNum = 0 // 总请求数
     totalSize = 0 // 总文件大小
-    uriArr = [] // 记录地址
+    uriArr = [] // 排重地址
     contents = {} // 请求资源
     excluded = {} // 被排除的请求
+    navUrl = '' // 当前访问链接
+    urlArr = [] // 所有访问链接
+    resObj = {} // 所有资源数据
+    harObj = {} // 所有 HAR 日志
     statEl.innerText = ''
-    resEl.innerText = ''
+    resNumEl.innerText = ''
+    harNumEl.innerText = ''
+    itemsEl.innerText = ''
 
     table_empty.style.display = 'flex'
     head_right.style.display = 'none'
@@ -255,12 +270,12 @@ function appendTable(data) {
 }
 
 // 统计信息
-function statHTML() {
+function statText() {
     statEl.innerText = ''
-    statEl.appendChild(addEl('u', '', '总大小 ' + humanSize(totalSize)))
-    statEl.appendChild(addEl('u', '', '总请求 ' + requestNum))
-    statEl.appendChild(addEl('u', '', '重复请求 ' + (requestNum - uriArr.length)))
-    statEl.appendChild(addEl('u', '', '实际请求 ' + uriArr.length))
+    statEl.appendChild(addEl('span', 'info', '总大小 ' + humanSize(totalSize)))
+    statEl.appendChild(addEl('span', 'info', '总请求 ' + requestNum))
+    statEl.appendChild(addEl('u', 'info', '重复请求 ' + (requestNum - uriArr.length)))
+    statEl.appendChild(addEl('span', 'info', '实际请求 ' + uriArr.length))
 }
 
 // 统一宽度
@@ -271,9 +286,30 @@ function uniformWidth() {
 
 // 统计资源数
 function resourceNum() {
-    getResources().then(resources => {
-        resEl.textContent = '资源数 ' + resources.length
-    }).catch(err => console.warn('getResources error:', err))
+    if (window._rT) _clearTimeout(window._rT)
+    window._rT = setTimeout(() => {
+        getResources().then(r => {
+            resNumEl.innerText = ''
+            resNumEl.appendChild(addEl('u', 'info', '资源数 ' + r.length))
+        }).catch(err => console.warn('getResources error:', err))
+    }, 500)
+}
+
+// 统计HAR日志数
+function harLogNum() {
+    if (window._hT) _clearTimeout(window._hT)
+    window._hT = setTimeout(() => {
+        getHAR().then(r => {
+            harNumEl.innerText = ''
+            harNumEl.appendChild(addEl('u', 'info', 'HAR日志数 ' + r.entries.length))
+        }).catch(err => console.warn('getHAR error:', err))
+    }, 500)
+}
+
+// 阻止 setTimeout 执行
+function _clearTimeout(v) {
+    clearTimeout(v)
+    v = null
 }
 
 // 判断错误网络请求

@@ -195,7 +195,6 @@ input[type=radio], input[type=checkbox] {
 
 #toolbar {
     padding: 0 15px;
-    border-right: 1px solid #D5D5D5;
 }
 
 #toolbar .icon {
@@ -222,14 +221,10 @@ input[type=radio], input[type=checkbox] {
     text-shadow: 0 0 2px #ff0004;
 }
 
-#statistics u {
+.header .info {
+    display: inline-block;
     padding: 0 5px;
-    text-decoration: none;
-    border-right: 1px solid #D5D5D5;
-}
-
-#resources {
-    padding: 0 5px;
+    border-left: 1px solid #D5D5D5;
 }
 
 #head_right {
