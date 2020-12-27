@@ -1,5 +1,5 @@
 # 梦想网页资源下载器 (Chrome & Firefox 扩展)
-这是一款轻量级网页资源下载器，可通过浏览器打包下载全部网页资源（JS/CSS/HTML/Img/Media/Font等）。
+这是一款轻量级网页资源下载器，可打包下载全部网页资源（JS/CSS/HTML/Img/Media/Font等）。
 
 是研究网站前端源码，和快速下载网页资源之利器。
 
