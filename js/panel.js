@@ -70,7 +70,7 @@ function onRequest(r) {
     }
 
     // 记录资源大小
-    let size = content.size
+    let size = content.size || response.bodySize || 0
     if (size > 0) totalSize += size
 
     // 文件类型
@@ -118,7 +118,7 @@ async function onDownload() {
         let status = response.status
         let url = request.url
         let method = request.method
-        let size = response.content.size
+        let size = response.content.size || response.bodySize || 0
         let mimeType = (response.content.mimeType || '').trim()
         if (isFirefox) mimeType = mimeType.split(';')[0].trim()
 
@@ -173,8 +173,8 @@ async function onDownload() {
         zip.file('log.har.json', JSON.stringify(harLog, null, '\t')) // 全部HAR日志 JSON
     }).catch(err => console.warn('getResources error:', err))
     zip.file('log.txt', log) // 正常日志
-    zip.file('log.err.txt', logErr) // 错误日志
-    zip.file('log.encoding.txt', logEncoding) // 有编码的文件日志
+    logErr && zip.file('log.err.txt', logErr) // 错误日志
+    logEncoding && zip.file('log.encoding.txt', logEncoding) // 有编码的文件日志
     zip.file('log.contents.json', JSON.stringify(contents, null, '\t')) // 请求资源 JSON
     requestNum > uriArr.length && zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求资源 JSON
 
