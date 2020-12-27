@@ -110,14 +110,9 @@ async function onDownload() {
 
     // 遍历请求，获取资源并打包
     let zip = new JSZip()
-    let j = 0
     for (let k in contents) {
-        let v = contents[k]
-        j++
-        // Firefox 性能不行，给显示一个进度
-        if (isFirefox) document.getElementById('loadingText').textContent = `生成 ${j}/${uriArr.length}`
-
         // 初始变量
+        let v = contents[k]
         let request = v.req.request
         let response = v.req.response
         let status = response.status
@@ -137,19 +132,19 @@ async function onDownload() {
 
         // 获取资源并打包
         let {content, encoding} = v.data
-        if (!content && [200, 302].includes(status) && size > 0 && size < 1024 * 1024 * 10) {
+        /*if (!content && [200, 302].includes(status) && size > 0 && size < 1024 * 1024 * 10) {
             fetch(url).then(r => r.blob()).then(r => {
                 content = r
             }).catch(err => {
                 console.warn('fetch error:', err)
             })
-        }
+        }*/
         if (!content) {
             logErr += `${status}\t${method}\t${humanSize(size)}\t${url}\n` // 记录文件内容为空的日志
             continue
         }
 
-        // Firefox 抄 Chromium API 不一致，浪费不少时间，这是要折腾死开发者吗？设计这 API 的工程师脑子秀逗了？明显 Chromium API 更好用！
+        // Firefox 抄 Chromium API 不一致，浪费不少时间，太折腾开发者了！设计这 API 的工程师脑子秀逗了？明显 Chromium API 更好用！
         // see https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/devtools.network/onRequestFinished
         if (isFirefox) encoding = response.content.encoding
 
