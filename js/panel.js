@@ -230,6 +230,14 @@ async function onDownloadResources() {
         await getContent(v).then(data => {
             let {content, encoding} = data
             if (!content) {
+                // 尝试在缓存中，查收数据
+                let cv = contents[`GET-${url}`]
+                if (cv) {
+                    content = cv.data.content
+                    encoding = cv.data.encoding
+                }
+            }
+            if (!content) {
                 logEmpty += `${type}\t${url}\n` // 记录文件内容为空的日志
                 return
             }
@@ -675,17 +683,17 @@ function getFixFilename(s, contentType) {
     let ext = getExt(s)
     if (ext.length > 0) {
         return s // 有后缀就不做处理
-    } else if (contentType.includes('text/html')) {
+    } else if (contentType.includes('text/html') || contentType.includes('document')) {
         return s + '.html'
-    } else if (contentType.includes('text/css')) {
+    } else if (contentType.includes('text/css') || contentType.includes('stylesheet')) {
         return s + '.css'
     } else if (contentType.includes('json')) {
         return s + '.json'
     } else if (contentType.indexOf('text/') === 0) {
         return s + '.txt'
-    } else if (contentType.includes('javascript')) {
+    } else if (contentType.includes('javascript') || contentType.includes('sm-script')) {
         return s + '.js'
-    } else if (contentType.includes('image/')) {
+    } else if (contentType.includes('image')) {
         if (contentType.includes('image/png')) return s + '.png'
         if (contentType.includes('image/jpeg')) return s + '.jpg'
         if (contentType.includes('image/gif')) return s + '.gif'
