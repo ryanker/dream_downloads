@@ -276,7 +276,7 @@ function statText() {
 // 统一宽度
 function uniformWidth() {
     let bcr = table_body.querySelector('table').getBoundingClientRect()
-    table_head.querySelector('table').style.width = bcr.width + 'px'
+    table_head.querySelector('th:last-child').style.width = (80 + (document.documentElement.scrollWidth - bcr.width)) + 'px'
 }
 
 // 统计资源数
