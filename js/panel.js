@@ -538,7 +538,6 @@ function rmClass(el, className) {
 }
 
 function getZipName(url, mimeType, method, isFull) {
-    if (url.includes('%')) url = decodeURIComponent(url) // 链接解码
     let u = {}
     try {
         u = new URL(url)
@@ -658,6 +657,7 @@ function filterHan(s) {
     // console.log(/^\p{Script=Han}+$/u.test('我是中国人，我爱中国'))
     // console.log(/\p{Unified_Ideograph}/u.test('我是中国人，我爱中国'))
     let r = ''
+    if (s.includes('%')) s = decodeURIComponent(s) // 链接解码
     for (let v of s) {
         if (/[\w.@\-]/.test(v) || /\p{Unified_Ideograph}/u.test(v)) {
             r += v
