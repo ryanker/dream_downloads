@@ -324,13 +324,13 @@ function showDialog(obj, name) {
     let showStatus = 'current'
     dowEl.addEventListener('click', () => {
         let b = showStatus === 'current' ? obj[navUrl] : obj
-        downloadBlob(b, `${showStatus}_${name}`)
+        downloadJson(b, `${showStatus}_${name}`)
     })
 
     // 下载压缩包
     dow2El.addEventListener('click', () => {
         let b = showStatus === 'current' ? obj[navUrl] : obj
-        downloadBlob(b, `${showStatus}_${name}`)
+        downloadJson(b, `${showStatus}_${name}`)
     })
 
     // 切换内容
@@ -358,10 +358,11 @@ function showExcludedDialog() {
     // 下载内容
     let dowEl = addEl('span', 'icon icon-down', '', '下载JSON')
     el.querySelector('.dialog_title .buts').insertAdjacentElement('afterbegin', dowEl)
-    dowEl.addEventListener('click', () => downloadBlob(excluded, `excluded_repeat`))
+    dowEl.addEventListener('click', () => downloadJson(excluded, `excluded_repeat`))
 }
 
-function downloadBlob(s, name) {
+// 下载 JSON
+function downloadJson(s, name) {
     let el = document.createElement('a')
     let blob = new Blob([JSON.stringify(s, null, '\t')], {type: 'application/json'})
     el.href = URL.createObjectURL(blob)
