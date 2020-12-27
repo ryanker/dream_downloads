@@ -109,6 +109,7 @@ async function onDownload() {
     setTimeout(rmLoading, 60 * 1000) // 超时时间
 
     // 遍历请求，获取资源并打包
+    let zipPath = {} // 记录 zip 包路径，允许重名
     let zip = new JSZip()
     for (let k in contents) {
         // 初始变量
@@ -149,14 +150,19 @@ async function onDownload() {
         if (isFirefox) encoding = response.content.encoding
 
         // 添加 zip 文件
-        let zipName = getZipName(url, mimeType, method, true) // 生成 zip 路径
+        let zipFile = getZipName(url, mimeType, method, true) // 生成 zip 路径
+        if (!zipPath[zipFile]) zipPath[zipFile] = 1
+        else {
+            zipPath[zipFile]++
+            zipFile = renameZipName(zipFile, zipPath[zipFile]) // 重名情况，重命名
+        }
         if (encoding) {
             logEncoding += `${status}\t${method}\t${encoding}\t${size}\t${url}\n` // 记录有编码的文件日志
-            zip.file(zipName, content, {base64: encoding === 'base64'}) // 目前浏览器只支持 base64 编码
+            zip.file(zipFile, content, {base64: encoding === 'base64'}) // 目前浏览器只支持 base64 编码
         } else {
-            zip.file(zipName, content)
+            zip.file(zipFile, content)
         }
-        log += `${status}\t${method}\t${size}\t${url}\t${zipName}\n` // 记录压缩正常日志
+        log += `${status}\t${method}\t${size}\t${url}\t${zipFile}\n` // 记录压缩正常日志
 
         // console.log('key:', k)
         // console.log('url:', url)
@@ -342,6 +348,7 @@ function showDialog(obj, name) {
     })
 }
 
+// 显示重复请求对话框
 function showExcludedDialog() {
     let el = openDialog()
     let textEl = addEl('textarea', 'code_text')
@@ -537,6 +544,20 @@ function rmClass(el, className) {
     }
 }
 
+// 修改 zip 路径（防止同名被覆盖，数字自增）
+function renameZipName(zipFile, num) {
+    let n = zipFile.lastIndexOf('/')
+    let filename = n > -1 ? zipFile.substring(n + 1) : zipFile // 获取文件名
+
+    n = filename.lastIndexOf('.')
+    if (n === -1) return zipFile + '_' + num // 没有后缀就直接追加
+    if (n === filename.length - 1) return zipFile + num // 特殊情况，直接追加
+    let ext = filename.substring(n)
+    let reg = new RegExp(ext.replace('.', '\\.') + '$')
+    return zipFile.replace(reg, '_' + num + ext)
+}
+
+// 根据 URL 和文件类型生成 zip 路径
 function getZipName(url, mimeType, method, isFull) {
     let u = {}
     try {
