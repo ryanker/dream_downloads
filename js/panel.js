@@ -86,12 +86,8 @@ function onRequest(r) {
     } else if (pre === 'blob:') {
         pathname = url
     } else {
-        // 生成 zip 路径
-        let u = new URL(url)
-        let dirname = getDir(u.pathname)
-        let filename = getFixFilename(u.pathname, mimeType)
-        pathname = dirname + filename
-        host = u.host
+        pathname = getZipName(url, mimeType)// 生成 zip 路径
+        host = new URL(url).host
     }
 
     if (uriArr.length < 2) showTable() // 显示表格
@@ -134,32 +130,31 @@ async function onDownload() {
         // 排除 data 和 bold 类型
         let pre = url.substring(0, 5)
         if (pre === 'data:' || pre === 'blob:') {
-            logErr += `${status}\t${method}\t${humanSize(size)}\t${url.substring(0, 19)}...\n` // 记录文件内容为 data 和 blob 的日志
+            if (pre === 'data:') url = url.substring(0, 19) + '...'
+            logErr += `${status}\t${method}\t${humanSize(size)}\t${url}\n` // 记录文件内容为 data 和 blob 的日志
             continue
         }
 
         // 获取资源并打包
         let {content, encoding} = v.data
-        // if (!content) {
-        //     await getContent(v).then(r => {
-        //         content = r.content
-        //         encoding = r.encoding
-        //     }).catch(err => console.warn('getContent error:', err))
-        // }
+        if (!content && [200, 302].includes(status) && size > 0 && size < 1024 * 1024 * 10) {
+            fetch(url).then(r => r.blob()).then(r => {
+                content = r
+            }).catch(err => {
+                console.warn('fetch error:', err)
+            })
+        }
         if (!content) {
             logErr += `${status}\t${method}\t${humanSize(size)}\t${url}\n` // 记录文件内容为空的日志
             continue
         }
 
-        // 生成 zip 路径
-        let u = new URL(url)
-        let dirname = getDir(u.pathname)
-        let filename = getFixFilename(u.pathname, mimeType)
-        let zipName = method + '-' + u.host + dirname + filename
-
-        // Firefox 抄 Chromium API 都抄的不一致，这是要折腾死开发者吗？设计者这 API 的工程师脑子秀逗了？明显 Chromium API 更好用，更明确！
+        // Firefox 抄 Chromium API 不一致，浪费不少时间，这是要折腾死开发者吗？设计这 API 的工程师脑子秀逗了？明显 Chromium API 更好用！
         // see https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/devtools.network/onRequestFinished
         if (isFirefox) encoding = response.content.encoding
+
+        // 添加 zip 文件
+        let zipName = getZipName(url, mimeType, method, true) // 生成 zip 路径
         if (encoding) {
             logEncoding += `${status}\t${method}\t${encoding}\t${size}\t${url}\n` // 记录有编码的文件日志
             zip.file(zipName, content, {base64: encoding === 'base64'}) // 目前浏览器只支持 base64 编码
@@ -174,11 +169,6 @@ async function onDownload() {
     }
 
     // 打包日志
-    zip.file('log.txt', log) // 正常日志
-    zip.file('log.err.txt', logErr) // 错误日志
-    zip.file('log.encoding.txt', logEncoding) // 有编码的文件日志
-    zip.file('log.contents.json', JSON.stringify(contents, null, '\t')) // 请求资源 JSON
-    requestNum > uriArr.length && zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求资源 JSON
     if (!isFirefox) {
         await getResources().then(resources => {
             zip.file('log.resources.json', JSON.stringify(resources, null, '\t')) // 全部资源 JSON
@@ -187,18 +177,22 @@ async function onDownload() {
     await getHAR().then(harLog => {
         zip.file('log.har.json', JSON.stringify(harLog, null, '\t')) // 全部HAR日志 JSON
     }).catch(err => console.warn('getResources error:', err))
+    zip.file('log.txt', log) // 正常日志
+    zip.file('log.err.txt', logErr) // 错误日志
+    zip.file('log.encoding.txt', logEncoding) // 有编码的文件日志
+    zip.file('log.contents.json', JSON.stringify(contents, null, '\t')) // 请求资源 JSON
+    requestNum > uriArr.length && zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求资源 JSON
 
     // 生成 zip 包，并下载文件
     await zip.generateAsync({type: "blob"}).then(function (blob) {
         // console.log('blob:', blob)
         let el = document.createElement('a')
-        el.href = window.URL.createObjectURL(blob)
+        el.href = URL.createObjectURL(blob)
         el.download = `梦想网页资源下载器-${getDomain()}-${getDate()}.zip`
         el.click()
     }).catch(err => console.warn('zip generateAsync error:', err))
 
-    // 关闭 loading
-    rmLoading()
+    rmLoading()  // 关闭 loading
 }
 
 // 重新载入页面
@@ -309,11 +303,13 @@ function showDialog(obj, name) {
     let conEl = el.querySelector('.dialog_content')
     let titEl = el.querySelector('.dialog_title')
     let butEl = titEl.querySelector('.buts')
-    let dowEl = addEl('span', 'icon icon-download', '', '下载JSON')
+    let dowEl = addEl('span', 'icon icon-down', '', '下载JSON')
+    let dow2El = addEl('span', 'icon icon-download')
     let curEl = addEl('u', 'show_current active', '当前')
     let allEl = addEl('u', 'show_all', '全部')
     let tabEl = addEl('div', 'tab flex_left')
     butEl.insertAdjacentElement('afterbegin', dowEl)
+    butEl.insertAdjacentElement('afterbegin', dow2El)
     tabEl.appendChild(curEl)
     tabEl.appendChild(allEl)
     titEl.appendChild(tabEl)
@@ -323,9 +319,15 @@ function showDialog(obj, name) {
     conEl.appendChild(textEl)
     textEl.textContent = JSON.stringify(obj[navUrl], null, 2)
 
-    // 下载内容
+    // 下载JSON
     let showStatus = 'current'
     dowEl.addEventListener('click', () => {
+        let b = showStatus === 'current' ? obj[navUrl] : obj
+        downloadBlob(b, `${showStatus}_${name}`)
+    })
+
+    // 下载压缩包
+    dow2El.addEventListener('click', () => {
         let b = showStatus === 'current' ? obj[navUrl] : obj
         downloadBlob(b, `${showStatus}_${name}`)
     })
@@ -352,7 +354,7 @@ function showExcludedDialog() {
     textEl.textContent = JSON.stringify(excluded, null, 2)
 
     // 下载内容
-    let dowEl = addEl('span', 'icon icon-download', '', '下载JSON')
+    let dowEl = addEl('span', 'icon icon-down', '', '下载JSON')
     el.querySelector('.dialog_title .buts').insertAdjacentElement('afterbegin', dowEl)
     dowEl.addEventListener('click', () => downloadBlob(excluded, `excluded_repeat`))
 }
@@ -540,22 +542,49 @@ function rmClass(el, className) {
     }
 }
 
+function getZipName(url, mimeType, method, isFull) {
+    if (url.includes('%')) url = decodeURIComponent(url) // 链接解码
+    let u = {}
+    try {
+        u = new URL(url)
+    } catch (e) {
+    }
+    let host = filterHan(u.host) || '-'
+    let zipName = host + '/' + getDir(u.pathname) + getFixFilename(u.pathname, mimeType)
+    if (isFull) {
+        let protocol = u.protocol
+        if (protocol === 'http:' || protocol === 'https:') protocol = ''
+        else {
+            protocol = protocol.replace(/[^\w\-]/, '')
+            if (protocol) protocol = protocol + '/'
+        }
+        return (method ? method + '-' : '') + protocol + zipName
+    }
+    return zipName
+}
+
 // 修正最常见的类型即可，避免画蛇添足
 function getFixFilename(s, contentType) {
     s = getFilename(s) || 'index'
     let ext = getExt(s)
-    if (contentType === 'text/html') {
-        return ['htm', 'html'].includes(ext) ? s : s + '.html'
-    } else if (contentType === 'text/css') {
-        return ext === 'css' ? s : s + '.css'
-    } else if (contentType === 'application/json') {
-        return ext === 'json' ? s : s + '.json'
-    } else if (contentType.includes('/javascript')) {
-        return ext === 'js' ? s : s + '.js'
+    if (ext.length > 0) {
+        return s // 有后缀就不做处理
+    } else if (contentType.includes('text/html')) {
+        return s + '.html'
+    } else if (contentType.includes('text/css')) {
+        return s + '.css'
+    } else if (contentType.includes('json')) {
+        return s + '.json'
+    } else if (contentType.indexOf('text/') === 0) {
+        return s + '.txt'
+    } else if (contentType.includes('javascript')) {
+        return s + '.js'
     } else if (contentType.includes('image/')) {
-        if (s.includes('.')) return s // 只要有后缀就不管
-        if (contentType === 'image/png') return s + '.png'
-        if (contentType === 'image/gif') return s + '.gif'
+        if (contentType.includes('image/png')) return s + '.png'
+        if (contentType.includes('image/jpeg')) return s + '.jpg'
+        if (contentType.includes('image/gif')) return s + '.gif'
+        if (contentType.includes('image/bmp')) return s + '.bmp'
+        if (contentType.includes('image/x-icon')) return s + '.ico'
         return s + '.jpg' // 不是常见类型，随便补一个后缀
     } else {
         return s
@@ -565,7 +594,6 @@ function getFixFilename(s, contentType) {
 // 获取文件名
 function getFilename(s) {
     if (!s) return ''
-    s = decodeURIComponent(s) // 链接解码
 
     // 过滤非法链接
     let n = s.indexOf(';')
@@ -579,6 +607,7 @@ function getFilename(s) {
     if (n > -1) s = s.substring(n + 1)
 
     // 限制最大长度
+    s = filterHan(s)
     let maxLen = 64
     if (s.length > maxLen) {
         let ext = getExt(s)
@@ -589,13 +618,29 @@ function getFilename(s) {
             s = s.substring(0, maxLen)
         }
     }
-    return filterHan(s)
+    return s
 }
 
 // 获取目录
 function getDir(s) {
     let n = s.lastIndexOf('/')
-    return filterHan(n > -1 ? s.substring(0, n + 1) : '')
+    if (n === -1 || !s) return ''
+    s = s.substring(0, n) // 获取文件夹
+    let arr = s.split('/')
+    let r = []
+    for (let i = arr.length - 1; i > -1; i--) {
+        let name = filterHan(arr[i].trim())
+        if (!name || name === '.') continue // 排除空目录
+        if (name === '..') {
+            r.pop()  // 退回一级目录
+            continue
+        }
+        if (name.length > 64) name = s.substring(0, 64) // 限制文件名长度
+        r.push(name)
+    }
+    if (r.length < 1) return ''
+    r.reverse() // 倒序回来
+    return r.join('/') + '/'
 }
 
 // 获取后缀
@@ -603,7 +648,7 @@ function getExt(s) {
     let n = s.lastIndexOf('.')
     if (n === -1) return '' // 没有后缀
     let ext = s.substring(n + 1)
-    ext = ext.replace(/[^0-9a-zA-Z]/g, '') // 限制只能是数字，字母
+    ext = ext.replace(/[^0-9a-zA-Z]/g, '') // 限制只能是数字和字母
     if (ext.length > 16) ext = ext.substring(0, 16) // 限制最大长度
     return ext.toLocaleLowerCase()
 }
@@ -619,11 +664,12 @@ function filterHan(s) {
     // console.log(/\p{Unified_Ideograph}/u.test('我是中国人，我爱中国'))
     let r = ''
     for (let v of s) {
-        if (/[\w./@\-]/.test(v) || /\p{Unified_Ideograph}/u.test(v)) {
+        if (/[\w.@\-]/.test(v) || /\p{Unified_Ideograph}/u.test(v)) {
             r += v
         } else {
             r += '_'
         }
     }
+    r = r.replace(/_{2,}/g, '_')
     return r
 }
