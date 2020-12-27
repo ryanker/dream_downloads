@@ -166,7 +166,7 @@ async function onDownload() {
 
         // console.log('key:', k)
         // console.log('url:', url)
-        // console.log('zip:', zipName)
+        // console.log('zip:', zipFile)
     }
 
     // 打包日志
@@ -194,6 +194,80 @@ async function onDownload() {
     }).catch(err => console.warn('zip generateAsync error:', err))
 
     rmLoading()  // 关闭 loading
+}
+
+// 根据"获取的所有资源"下载资源 (firefox 未实现此接口)
+async function onDownloadResources() {
+    // 添加 loading
+    addLoading('正在打包...')
+    setTimeout(rmLoading, 60 * 1000) // 超时时间
+
+    let log = '' // 正常日志
+    let logEmpty = '' // 内容为空的文件日志
+    let logEncoding = '' // 有编码的文件日志
+
+    // 排重
+    let allObj = {}
+    for (let arr of Object.values(resObj)) {
+        for (let v of arr) {
+            let url = v.url
+            // if (!allObj[url]) allObj[url] = v // 排重，只保留第一条
+            allObj[url] = v // 排重，只保留最后一条
+        }
+    }
+
+    // 遍历请求，获取资源并打包
+    let zipPaths = {} // 记录 zip 包路径，允许重名
+    let zip = new JSZip()
+    for (let v of Object.values(allObj)) {
+        let url = v.url
+        let type = v.type
+
+        // 排除 data 和 bold 类型
+        let pre = url.substring(0, 5)
+        if (pre === 'data:' || pre === 'blob:') continue
+
+        await getContent(v).then(data => {
+            let {content, encoding} = data
+            if (!content) {
+                logEmpty += `${type}\t${url}\n` // 记录文件内容为空的日志
+                return
+            }
+
+            // 添加 zip 文件
+            let zipFile = getZipName(url, type, '', true) // 生成 zip 路径
+            if (!zipPaths[zipFile]) zipPaths[zipFile] = 1
+            else {
+                zipPaths[zipFile]++
+                zipFile = renameZipName(zipFile, zipPaths[zipFile]) // 重名情况，重命名
+            }
+            if (encoding) {
+                logEncoding += `${encoding}\t${url}\n` // 记录有编码的文件日志
+                zip.file(zipFile, content, {base64: encoding === 'base64'}) // 目前浏览器只支持 base64 编码
+            } else {
+                zip.file(zipFile, content)
+            }
+            log += `${type}\t${url}\t${zipFile}\n` // 记录压缩正常日志
+        })
+    }
+
+    // 打包日志
+    zip.file('log.resources.json', JSON.stringify(resObj, null, '\t')) // 全部资源 JSON
+    zip.file('log.txt', log) // 正常日志
+    logEmpty && zip.file('log.empty.txt', logEmpty) // 内容为空的文件日志
+    logEncoding && zip.file('log.encoding.txt', logEncoding) // 有编码的文件日志
+
+    // 生成 zip 包，并下载文件
+    await zip.generateAsync({type: "blob"}).then(function (blob) {
+        downloadZip(blob, '.resources')
+    }).catch(err => console.warn('zip generateAsync error:', err))
+
+    rmLoading()  // 关闭 loading
+}
+
+// 根据"获取的所有 HAR 日志"下载资源
+async function onDownloadHar() {
+
 }
 
 // 重新载入页面
@@ -306,13 +380,15 @@ function showDialog(obj, name) {
     let butEl = titEl.querySelector('.buts')
     let dowEl = addEl('span', 'icon icon-down', '', '下载JSON')
     let dow2El = addEl('span', 'icon icon-download')
-    let curEl = addEl('u', 'show_current active', '当前')
-    let allEl = addEl('u', 'show_all', '全部')
+    let curEl = addEl('u', 'show_current active', '当前', '当前页面记录')
+    let allEl = addEl('u', 'show_all', '全部', '全部页面记录')
+    let linkEl = addEl('u', 'show_link', '访问', '访问页面记录')
     let tabEl = addEl('div', 'tab flex_left')
     butEl.insertAdjacentElement('afterbegin', dowEl)
     butEl.insertAdjacentElement('afterbegin', dow2El)
     tabEl.appendChild(curEl)
     tabEl.appendChild(allEl)
+    tabEl.appendChild(linkEl)
     titEl.appendChild(tabEl)
 
     // 显示内容
@@ -328,23 +404,29 @@ function showDialog(obj, name) {
     })
 
     // 下载压缩包
+    dow2El.title = name === 'resources' ? '根据"获取的所有资源"下载资源' : '根据"获取的所有 HAR 日志"下载资源'
     dow2El.addEventListener('click', () => {
-        let b = showStatus === 'current' ? obj[navUrl] : obj
-        downloadJson(b, `${showStatus}_${name}`)
+        name === 'resources' ? onDownloadResources() : onDownloadHar()
     })
 
     // 切换内容
+    let onActive = function (el) {
+        tabEl.querySelectorAll('u').forEach(e => rmClass(e, 'active'))
+        addClass(el, 'active')
+    }
     curEl.addEventListener('click', function () {
         showStatus = 'current'
-        rmClass(allEl, 'active')
-        addClass(curEl, 'active')
+        onActive(curEl)
         textEl.textContent = JSON.stringify(obj[navUrl], null, 2)
     })
     allEl.addEventListener('click', function () {
         showStatus = 'all'
-        rmClass(curEl, 'active')
-        addClass(allEl, 'active')
+        onActive(allEl)
         textEl.textContent = JSON.stringify(obj, null, 2)
+    })
+    linkEl.addEventListener('click', function () {
+        onActive(linkEl)
+        textEl.textContent = JSON.stringify(urlArr, null, 2)
     })
 }
 
@@ -362,11 +444,19 @@ function showExcludedDialog() {
 }
 
 // 下载 JSON
-function downloadJson(s, name) {
+function downloadJson(data, name) {
+    let blob = new Blob([JSON.stringify(data, null, '\t')], {type: 'application/json'})
     let el = document.createElement('a')
-    let blob = new Blob([JSON.stringify(s, null, '\t')], {type: 'application/json'})
     el.href = URL.createObjectURL(blob)
     el.download = `梦想网页资源下载器-${getDomain()}-${getDate()}.${name}.json`
+    el.click()
+}
+
+// 下载 ZIP
+function downloadZip(blob, name) {
+    let el = document.createElement('a')
+    el.href = URL.createObjectURL(blob)
+    el.download = `梦想网页资源下载器-${getDomain()}-${getDate()}${name || ''}.zip`
     el.click()
 }
 
@@ -651,7 +741,7 @@ function getDir(s) {
             r.pop()  // 退回一级目录
             continue
         }
-        if (name.length > 64) name = s.substring(0, 64) // 限制文件名长度
+        if (name.length > 64) name = s.substring(0, 64) // 限制目录名长度
         r.push(name)
     }
     if (r.length < 1) return ''
