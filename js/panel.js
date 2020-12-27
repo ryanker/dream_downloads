@@ -236,6 +236,7 @@ function onClear() {
     resNumEl.innerText = ''
     harNumEl.innerText = ''
     itemsEl.innerText = ''
+    closeDialog() // 关闭对话框
 
     table_empty.style.display = 'flex'
     head_right.style.display = 'none'
@@ -268,7 +269,7 @@ function statText() {
     statEl.innerText = ''
     statEl.appendChild(addEl('span', 'info', '总大小 ' + humanSize(totalSize)))
     statEl.appendChild(addEl('span', 'info', '总请求 ' + requestNum))
-    statEl.appendChild(addEl('u', 'info', '重复请求 ' + (requestNum - uriArr.length)))
+    statEl.appendChild(addEl('u', 'info', '重复请求 ' + (requestNum - uriArr.length), '', showExcludedDialog))
     statEl.appendChild(addEl('span', 'info', '实际请求 ' + uriArr.length))
 }
 
@@ -285,7 +286,7 @@ function resourceNum() {
         getResources().then(r => {
             resObj[navUrl] = r // 按照请求链接，记录数据
             resNumEl.innerText = ''
-            resNumEl.appendChild(addEl('u', 'info', '资源数 ' + r.length))
+            resNumEl.appendChild(addEl('u', 'info', '资源数 ' + r.length, '', () => showDialog(resObj, 'resources')))
         }).catch(err => console.warn('getResources error:', err))
     }, 500)
 }
@@ -297,9 +298,92 @@ function harLogNum() {
         getHAR().then(r => {
             harObj[navUrl] = r // 按照请求链接，记录数据
             harNumEl.innerText = ''
-            harNumEl.appendChild(addEl('u', 'info', 'HAR日志数 ' + r.entries.length))
+            harNumEl.appendChild(addEl('u', 'info', 'HAR日志数 ' + r.entries.length, '', () => showDialog(harObj, 'har')))
         }).catch(err => console.warn('getHAR error:', err))
     }, 500)
+}
+
+// 显示对话框 (资源数据和 HAR 日志)
+function showDialog(obj, name) {
+    let el = openDialog()
+    let conEl = el.querySelector('.dialog_content')
+    let titEl = el.querySelector('.dialog_title')
+    let butEl = titEl.querySelector('.buts')
+    let dowEl = addEl('span', 'icon icon-download', '', '下载JSON')
+    let curEl = addEl('u', 'show_current active', '当前')
+    let allEl = addEl('u', 'show_all', '全部')
+    let tabEl = addEl('div', 'tab flex_left')
+    butEl.insertAdjacentElement('afterbegin', dowEl)
+    tabEl.appendChild(curEl)
+    tabEl.appendChild(allEl)
+    titEl.appendChild(tabEl)
+
+    // 显示内容
+    let textEl = addEl('textarea', 'code_text')
+    conEl.appendChild(textEl)
+    textEl.textContent = JSON.stringify(obj[navUrl], null, 2)
+
+    // 下载内容
+    let showStatus = 'current'
+    dowEl.addEventListener('click', () => {
+        let b = showStatus === 'current' ? obj[navUrl] : obj
+        downloadBlob(b, `${showStatus}_${name}`)
+    })
+
+    // 切换内容
+    curEl.addEventListener('click', function () {
+        showStatus = 'current'
+        rmClass(allEl, 'active')
+        addClass(curEl, 'active')
+        textEl.textContent = JSON.stringify(obj[navUrl], null, 2)
+    })
+    allEl.addEventListener('click', function () {
+        showStatus = 'all'
+        rmClass(curEl, 'active')
+        addClass(allEl, 'active')
+        textEl.textContent = JSON.stringify(obj, null, 2)
+    })
+}
+
+function showExcludedDialog() {
+    let el = openDialog()
+    let textEl = addEl('textarea', 'code_text')
+    el.querySelector('.dialog_content').appendChild(textEl)
+    textEl.textContent = JSON.stringify(excluded, null, 2)
+
+    // 下载内容
+    let dowEl = addEl('span', 'icon icon-download', '', '下载JSON')
+    el.querySelector('.dialog_title .buts').insertAdjacentElement('afterbegin', dowEl)
+    dowEl.addEventListener('click', () => downloadBlob(excluded, `excluded_repeat`))
+}
+
+function downloadBlob(s, name) {
+    let el = document.createElement('a')
+    let blob = new Blob([JSON.stringify(s, null, '\t')], {type: 'application/json'})
+    el.href = URL.createObjectURL(blob)
+    el.download = `梦想网页资源下载器-${getDomain()}-${getDate()}.${name}.json`
+    el.click()
+}
+
+function openDialog() {
+    closeDialog() // 只允许一个 dialog
+    let el = addEl('div', 'dialog')
+    let dt1 = addEl('div', 'dialog_title flex_left')
+    let dt2 = addEl('div', 'buts')
+    dt1.appendChild(dt2)
+    dt2.appendChild(addEl('span', 'icon icon-close', '', '关闭', closeDialog))
+    el.appendChild(dt1)
+    el.appendChild(addEl('div', 'dialog_content'))
+    document.body.appendChild(el)
+    return el
+}
+
+function closeDialog() {
+    $('.dialog').forEach(el => el.remove())
+}
+
+function $(s) {
+    return document.querySelectorAll(s)
 }
 
 // 阻止 setTimeout 执行
@@ -422,11 +506,12 @@ function rmLoading() {
 }
 
 // 添加 DOM 元素
-function addEl(tag, className, text, title) {
+function addEl(tag, className, text, title, onClick) {
     let el = document.createElement(tag)
     if (className) el.className = className
     if (text) el.textContent = text
     if (title) el.title = title
+    if (onClick) el.addEventListener('click', onClick)
     return el
 }
 

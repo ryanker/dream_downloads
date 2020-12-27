@@ -227,6 +227,10 @@ input[type=radio], input[type=checkbox] {
     border-left: 1px solid #D5D5D5;
 }
 
+.header u.info {
+    cursor: pointer;
+}
+
 #head_right {
     position: absolute;
     top: 0;
@@ -292,6 +296,7 @@ input[type=radio], input[type=checkbox] {
     font-size: 14px;
 }
 
+/* button */
 .dmx_button {
     background: #4395ff;
     border: 1px solid #3589ff;
@@ -335,13 +340,13 @@ input[type=radio], input[type=checkbox] {
 }
 
 .loading-bg {
-    z-index: 8;
+    z-index: 98;
     background: #333;
     opacity: 0.8;
 }
 
 .loading {
-    z-index: 9;
+    z-index: 99;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -370,4 +375,91 @@ input[type=radio], input[type=checkbox] {
     100% {
         transform: rotate(0deg);
     }
+}
+
+/*dialog*/
+.flex_left {
+    display: flex;
+    align-items: center;
+    justify-content: left;
+}
+
+.dialog, .dialog_title, .dialog_content {
+    z-index: 9;
+    position: fixed;
+    top: 40px;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #fff;
+}
+
+.dialog_title {
+    height: 30px;
+    background: #F0F0F0;
+    border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+}
+
+.dialog_title .buts {
+    position: absolute;
+    top: 6px;
+    right: 2px;
+}
+
+.dialog_title .buts .icon {
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.dialog_title .buts .icon-close {
+    color: #ff0004;
+}
+
+.dialog_content {
+    top: 70px;
+}
+
+.dialog_content .code_text {
+    width: 100%;
+    height: 100%;
+    padding: 5px;
+    border: none;
+    outline: none;
+    resize: none;
+}
+
+/* tab */
+.tab {
+    margin: 2px 10px 0;
+}
+
+.tab u {
+    display: block;
+    text-decoration: none;
+    background: #fff;
+    border: 1px solid #D5D7DF;
+    margin-left: -1px;
+    padding: 4px 8px;
+    line-height: 1;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.tab u:first-child {
+    border-radius: 5px 0 0 5px;
+}
+
+.tab u:last-child {
+    border-radius: 0 5px 5px 0;
+}
+
+.tab u:hover {
+    color: #1a73e8;
+}
+
+.tab u.active {
+    color: #fff;
+    background: #409eff;
+    border-color: #409eff;
 }
