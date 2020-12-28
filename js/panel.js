@@ -7,6 +7,7 @@ let itemsEl = document.getElementById('items')
 let statEl = document.getElementById('statistics')
 let resNumEl = document.getElementById('resourceNum')
 let harNumEl = document.getElementById('harNum')
+let pageNumEl = document.getElementById('pageNum')
 let downloadEl = document.getElementById('download')
 let refreshEl = document.getElementById('refresh')
 let switchBut = document.getElementById('switchBut')
@@ -26,15 +27,25 @@ let navUrl = '' // 当前访问链接
 let urlArr = [] // 所有访问链接
 let resObj = {} // 所有资源数据
 let harObj = {} // 所有 HAR 日志
-devtools.network.onNavigated.addListener(function (url) {
-    navUrl = url
-    urlArr.push(url)
-})
+devtools.network.onNavigated.addListener(onNavigated) // 访问新页面
 devtools.network.onRequestFinished.addListener(onRequest) // 网络请求完成
 downloadEl.addEventListener('click', onDownloadCache) // 下载资源 (从缓存数据中获取)
 refreshEl.addEventListener('click', onRefresh) // 重新载入页面
 switchBut.addEventListener('click', onSwitch) // 是否启用
 clearBut.addEventListener('click', onClear) // 清空资源
+
+// 访问新页面
+function onNavigated(url) {
+    navUrl = url
+    urlArr.push(url)
+    pageNumEl.innerText = ''
+    pageNumEl.appendChild(addEl('u', 'info', '网页数 ' + urlArr.length, '访问的网页数量', () => {
+        let el = openDialog()
+        let textEl = addEl('textarea', 'code_text')
+        el.querySelector('.dialog_content').appendChild(textEl)
+        textEl.textContent = JSON.stringify(urlArr, null, 2)
+    }))
+}
 
 // 网络请求完成
 function onRequest(v) {
@@ -146,7 +157,7 @@ async function downloadByHar(harArr, name, isCache) {
             continue
         }
 
-        let content = null, encoding = null
+        let content = null, encoding = ''
         if (isCache) {
             let d = contents[`${method}-${url}`]
             if (d) {
@@ -211,7 +222,7 @@ async function downloadByHar(harArr, name, isCache) {
     rmLoading()  // 关闭 loading
 }
 
-// 下载资源 (从获取资源中获取) [firefox 未实现此接口]
+// 下载资源 (从资源列表中获取) todo: Firefox 未实现此接口
 async function onDownloadResources() {
     addLoading('正在打包...') // 添加 loading
     setTimeout(rmLoading, 60 * 1000) // 超时时间
@@ -324,6 +335,7 @@ function onClear() {
     statEl.innerText = ''
     resNumEl.innerText = ''
     harNumEl.innerText = ''
+    pageNumEl.innerText = ''
     itemsEl.innerText = '' // 清空表格
     closeDialog() // 关闭对话框
 
@@ -402,13 +414,11 @@ function showDialog(obj, name) {
     let dow2El = addEl('span', 'icon icon-download')
     let curEl = addEl('u', 'show_current active', '当前', '当前页面记录')
     let allEl = addEl('u', 'show_all', '全部', '全部页面记录')
-    let linkEl = addEl('u', 'show_link', '访问', '访问页面记录')
     let tabEl = addEl('div', 'tab flex_left')
     butEl.insertAdjacentElement('afterbegin', dowEl)
     butEl.insertAdjacentElement('afterbegin', dow2El)
     tabEl.appendChild(curEl)
     tabEl.appendChild(allEl)
-    tabEl.appendChild(linkEl)
     titEl.appendChild(tabEl)
 
     // 显示内容
@@ -424,7 +434,7 @@ function showDialog(obj, name) {
     })
 
     // 下载压缩包
-    dow2El.title = name === 'resources' ? '根据"获取的所有资源"下载资源' : '根据"获取的所有 HAR 日志"下载资源'
+    dow2El.title = name === 'resources' ? '下载资源 (从资源列表中获取)' : '下载资源 (从 HAR 日志中获取)'
     dow2El.addEventListener('click', () => {
         name === 'resources' ? onDownloadResources() : onDownloadHar()
     })
@@ -444,10 +454,6 @@ function showDialog(obj, name) {
         onActive(allEl)
         textEl.textContent = JSON.stringify(obj, null, 2)
     })
-    linkEl.addEventListener('click', function () {
-        onActive(linkEl)
-        textEl.textContent = JSON.stringify(urlArr, null, 2)
-    })
 }
 
 // 显示重复请求对话框
@@ -458,9 +464,8 @@ function showExcludedDialog() {
     textEl.textContent = JSON.stringify(excluded, null, 2)
 
     // 下载内容
-    let dowEl = addEl('span', 'icon icon-down', '', '下载JSON')
+    let dowEl = addEl('span', 'icon icon-down', '', '下载JSON', () => downloadJson(excluded, `excluded_repeat`))
     el.querySelector('.dialog_title .buts').insertAdjacentElement('afterbegin', dowEl)
-    dowEl.addEventListener('click', () => downloadJson(excluded, `excluded_repeat`))
 }
 
 // 下载 JSON
