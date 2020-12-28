@@ -423,7 +423,7 @@ function showDialog(obj, name) {
     let conEl = el.querySelector('.dialog_content')
     let titEl = el.querySelector('.dialog_title')
     let butEl = titEl.querySelector('.buts')
-    let dowEl = addEl('span', 'icon icon-down', '', '下载JSON')
+    let dowEl = addEl('span', 'icon icon-down', '', '下载 JSON')
     let dow2El = addEl('span', 'icon icon-download')
     let curEl = addEl('u', 'show_current active', '当前', '当前页面记录')
     let allEl = addEl('u', 'show_all', '全部', '全部页面记录')
@@ -439,7 +439,7 @@ function showDialog(obj, name) {
     conEl.appendChild(textEl)
     textEl.textContent = JSON.stringify(obj[navUrl], null, 2)
 
-    // 下载JSON
+    // 下载 JSON
     let showStatus = 'current'
     dowEl.addEventListener('click', () => {
         let b = showStatus === 'current' ? obj[navUrl] : obj
@@ -477,7 +477,7 @@ function showExcludedDialog() {
     textEl.textContent = JSON.stringify(excluded, null, 2)
 
     // 下载内容
-    let dowEl = addEl('span', 'icon icon-down', '', '下载JSON', () => downloadJson(excluded, `excluded_repeat`))
+    let dowEl = addEl('span', 'icon icon-down', '', '下载 JSON', () => downloadJson(excluded, `excluded_repeat`))
     el.querySelector('.dialog_title .buts').insertAdjacentElement('afterbegin', dowEl)
 }
 
