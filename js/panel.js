@@ -131,7 +131,7 @@ function onDownloadHar() {
 
 // 通过 har 日志打包下载数据
 async function downloadByHar(harArr, name, isCache) {
-    addLoading('正在打包...') // 添加 loading
+    addLoading('正在添加压缩文件...') // 添加 loading
     setTimeout(rmLoading, 300 * 1000) // 超时时间
 
     let log = '' // 正常日志
@@ -206,6 +206,7 @@ async function downloadByHar(harArr, name, isCache) {
     }
 
     // 打包日志
+    setLoadingText('正在生成日志中...')
     !isCache && zip.file('log.har.json', JSON.stringify(harObj, null, '\t')) // 所有 HAR 日志
     isCache && zip.file('log.requests.json', JSON.stringify(requests, null, '\t')) // 所有资源请求
     requestNum > uriArr.length && zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求链接
@@ -215,6 +216,7 @@ async function downloadByHar(harArr, name, isCache) {
     logEncoding && zip.file('log.encoding.txt', logEncoding) // 有编码的文件日志
 
     // 生成 zip 包，并下载文件
+    setLoadingText('正在生成压缩包...')
     await zip.generateAsync({type: "blob"}).then(function (blob) {
         downloadZip(blob, name)
     }).catch(err => console.warn('zip generateAsync error:', err))
@@ -224,7 +226,7 @@ async function downloadByHar(harArr, name, isCache) {
 
 // 下载资源 (从资源列表中获取) todo: Firefox 未实现此接口
 async function onDownloadResources() {
-    addLoading('正在打包...') // 添加 loading
+    addLoading('正在添加压缩文件...') // 添加 loading
     setTimeout(rmLoading, 300 * 1000) // 超时时间
 
     let log = '' // 正常日志
@@ -286,6 +288,7 @@ async function onDownloadResources() {
     }
 
     // 打包日志
+    setLoadingText('正在生成日志中...')
     zip.file('log.resources.json', JSON.stringify(resObj, null, '\t')) // 所有资源数据
     zip.file('log.txt', log) // 正常日志
     logEmpty && zip.file('log.empty.txt', logEmpty) // 空内容的文件日志
@@ -293,6 +296,7 @@ async function onDownloadResources() {
     logEncoding && zip.file('log.encoding.txt', logEncoding) // 有编码的文件日志
 
     // 生成 zip 包，并下载文件
+    setLoadingText('正在生成压缩包...')
     await zip.generateAsync({type: "blob"}).then(function (blob) {
         downloadZip(blob, '.resources')
     }).catch(err => console.warn('zip generateAsync error:', err))
@@ -603,6 +607,11 @@ function humanSize(n) {
     } else {
         return (n / 1024 / 1024 / 1024 / 1024 / 1024).toFixed(2) + ' P'
     }
+}
+
+// 设置 loading 文字
+function setLoadingText(text) {
+    document.getElementById('loadingText').innerText = text
 }
 
 // 添加 loading
