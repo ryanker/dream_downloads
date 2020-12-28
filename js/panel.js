@@ -19,7 +19,8 @@ let table_empty = document.getElementById('table_empty')
 let requestNum = 0 // 总请求数
 let totalSize = 0 // 总文件大小
 let uriArr = [] // 排重地址
-let contents = {} // 记录所有资源内容 (数据比较大，访问过程中，直接保存在内存中，所以受内存大小限制)
+let requests = {} // 所有资源请求
+let contents = {} // 所有资源内容 (数据比较大，访问过程中，直接保存在内存中，所以受内存大小限制)
 let excluded = {} // 被排除的重复请求
 let navUrl = '' // 当前访问链接
 let urlArr = [] // 所有访问链接
@@ -30,17 +31,17 @@ devtools.network.onNavigated.addListener(function (url) {
     urlArr.push(url)
 })
 devtools.network.onRequestFinished.addListener(onRequest) // 网络请求完成
-downloadEl.addEventListener('click', onDownload) // 下载资源
+downloadEl.addEventListener('click', onDownloadCache) // 下载资源 (从缓存数据中获取)
 refreshEl.addEventListener('click', onRefresh) // 重新载入页面
 switchBut.addEventListener('click', onSwitch) // 是否启用
 clearBut.addEventListener('click', onClear) // 清空资源
 
 // 网络请求完成
-function onRequest(r) {
+function onRequest(v) {
     if (switchBut.dataset.off === 'true') return // 停止资源获取
     requestNum++
-    let request = r.request
-    let response = r.response
+    let request = v.request
+    let response = v.response
     let status = response.status
     let content = response.content
 
@@ -50,8 +51,9 @@ function onRequest(r) {
     let uri = method + '-' + url
 
     // 根据 uri 排重后，保存文件内容到内存中
-    getContent(r).then(data => {
-        contents[uri] = {req: r, data}
+    requests[uri] = v
+    getContent(v).then(data => {
+        contents[uri] = data
     })
 
     // 根据请求地址排重
@@ -98,64 +100,91 @@ function onRequest(r) {
     harLogNum() // 统计HAR日志数
 }
 
-// 下载资源
-async function onDownload() {
-    let log = '' // 正常日志
-    let logErr = '' // 错误日志
-    let logEncoding = '' // 有编码的文件日志
+// 下载资源 (从缓存中获取)
+function onDownloadCache() {
+    downloadByHar(Object.values(requests), '.requests', true).catch(_ => null)
+}
 
-    // 添加 loading
-    addLoading('正在打包...')
+// 下载资源 (从 HAR 日志中获取)
+function onDownloadHar() {
+    // 排重
+    let allObj = {}
+    for (let obj of Object.values(harObj)) {
+        for (let v of obj.entries) {
+            let url = v.request.method + '-' + v.request.url
+            allObj[url] = v // 排重，只保留最后一条
+        }
+    }
+    downloadByHar(Object.values(allObj), '.har').catch(_ => null)
+}
+
+// 通过 har 日志打包下载数据
+async function downloadByHar(harArr, name, isCache) {
+    addLoading('正在打包...') // 添加 loading
     setTimeout(rmLoading, 60 * 1000) // 超时时间
 
+    let log = '' // 正常日志
+    let logEmpty = '' // 空内容的文件日志
+    let logExcluded = '' // 被排除的文件日志
+    let logEncoding = '' // 有编码的文件日志
+
     // 遍历请求，获取资源并打包
-    let zipPath = {} // 记录 zip 包路径，允许重名
+    let zipPaths = {} // 记录 zip 包路径，允许重名
     let zip = new JSZip()
-    for (let k in contents) {
-        // 初始变量
-        let v = contents[k]
-        let request = v.req.request
-        let response = v.req.response
-        let status = response.status
-        let url = request.url
-        let method = request.method
-        let size = response.content.size || response.bodySize || 0
-        let mimeType = (response.content.mimeType || '').trim()
+    for (let v of harArr) {
+        let method = v.request.method
+        let url = v.request.url
+        let status = v.response.status
+        let size = v.response.content.size || v.response.bodySize || 0
+        let mimeType = v.response.content.mimeType
         if (isFirefox) mimeType = mimeType.split(';')[0].trim()
 
-        // 排除 data 和 bold 类型
+        // 排除 data 和 bold 类型 (由程序生成的数据)
         let pre = url.substring(0, 5)
         if (pre === 'data:' || pre === 'blob:') {
-            if (pre === 'data:') url = url.substring(0, 19) + '...'
-            logErr += `${status}\t${method}\t${humanSize(size)}\t${url}\n` // 记录文件内容为 data 和 blob 的日志
+            logExcluded += `${url}\n` // 被排除的文件日志
             continue
         }
 
-        // 获取资源并打包
-        let {content, encoding} = v.data
-        /*if (!content && [200, 302].includes(status) && size > 0 && size < 1024 * 1024 * 10) {
-            fetch(url).then(r => r.blob()).then(r => {
-                content = r
-            }).catch(err => {
-                console.warn('fetch error:', err)
+        let content = null, encoding = null
+        if (isCache) {
+            let d = contents[`${method}-${url}`]
+            if (d) {
+                [content, encoding] = [d.content, d.encoding]
+            }
+            /*if (!content && [200, 302].includes(status) && size > 0 && size < 1024 * 1024 * 10) {
+                fetch(url).then(r => r.blob()).then(r => {
+                    content = r
+                }).catch(err => {
+                    console.warn('fetch error:', err)
+                })
+            }*/
+        } else {
+            await getContent(v).then(data => {
+                [content, encoding] = [data.content, data.encoding]
+                if (!content) {
+                    // 尝试在缓存中，查收数据
+                    let d = contents[`${method}-${url}`]
+                    if (d) [content, encoding] = [d.content, d.encoding]
+                }
             })
-        }*/
+        }
+
         if (!content) {
-            logErr += `${status}\t${method}\t${humanSize(size)}\t${url}\n` // 记录文件内容为空的日志
+            logEmpty += `${status}\t${method}\t${humanSize(size)}\t${url}\n` // 空内容的文件日志
             continue
+        }
+
+        let zipFile = getZipName(url, mimeType, method, true) // 生成 zip 路径
+        if (!zipPaths[zipFile]) zipPaths[zipFile] = 1
+        else {
+            zipPaths[zipFile]++
+            zipFile = renameZipName(zipFile, zipPaths[zipFile]) // 重名情况，重命名
         }
 
         // Firefox 抄 Chromium API 不一致，浪费不少时间，太折腾开发者了！设计这 API 的工程师脑子秀逗了？明显 Chromium API 更好用！
         // see https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/devtools.network/onRequestFinished
-        if (isFirefox) encoding = response.content.encoding
-
-        // 添加 zip 文件
-        let zipFile = getZipName(url, mimeType, method, true) // 生成 zip 路径
-        if (!zipPath[zipFile]) zipPath[zipFile] = 1
-        else {
-            zipPath[zipFile]++
-            zipFile = renameZipName(zipFile, zipPath[zipFile]) // 重名情况，重命名
-        }
+        if (isFirefox) encoding = v.response.content.encoding
         if (encoding) {
             logEncoding += `${status}\t${method}\t${encoding}\t${size}\t${url}\n` // 记录有编码的文件日志
             zip.file(zipFile, content, {base64: encoding === 'base64'}) // 目前浏览器只支持 base64 编码
@@ -163,47 +192,33 @@ async function onDownload() {
             zip.file(zipFile, content)
         }
         log += `${status}\t${method}\t${size}\t${url}\t${zipFile}\n` // 记录压缩正常日志
-
-        // console.log('key:', k)
-        // console.log('url:', url)
-        // console.log('zip:', zipFile)
     }
 
     // 打包日志
-    if (!isFirefox) {
-        await getResources().then(resources => {
-            zip.file('log.resources.json', JSON.stringify(resources, null, '\t')) // 全部资源 JSON
-        }).catch(err => console.warn('getResources error:', err))
-    }
-    await getHAR().then(harLog => {
-        zip.file('log.har.json', JSON.stringify(harLog, null, '\t')) // 全部HAR日志 JSON
-    }).catch(err => console.warn('getResources error:', err))
+    !isCache && zip.file('log.har.json', JSON.stringify(harObj, null, '\t')) // 所有 HAR 日志
+    isCache && zip.file('log.requests.json', JSON.stringify(requests, null, '\t')) // 所有资源请求
+    requestNum > uriArr.length && zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求链接
     zip.file('log.txt', log) // 正常日志
-    logErr && zip.file('log.err.txt', logErr) // 错误日志
+    logEmpty && zip.file('log.empty.txt', logEmpty) // 空内容的文件日志
+    logExcluded && zip.file('log.excluded.txt', logExcluded) // 被排除的文件日志
     logEncoding && zip.file('log.encoding.txt', logEncoding) // 有编码的文件日志
-    zip.file('log.contents.json', JSON.stringify(contents, null, '\t')) // 请求资源 JSON
-    requestNum > uriArr.length && zip.file('log.repeat.json', JSON.stringify(excluded, null, '\t')) // 重复请求资源 JSON
 
     // 生成 zip 包，并下载文件
     await zip.generateAsync({type: "blob"}).then(function (blob) {
-        // console.log('blob:', blob)
-        let el = document.createElement('a')
-        el.href = URL.createObjectURL(blob)
-        el.download = `梦想网页资源下载器-${getDomain()}-${getDate()}.zip`
-        el.click()
+        downloadZip(blob, name)
     }).catch(err => console.warn('zip generateAsync error:', err))
 
     rmLoading()  // 关闭 loading
 }
 
-// 根据"获取的所有资源"下载资源 (firefox 未实现此接口)
+// 下载资源 (从获取资源中获取) [firefox 未实现此接口]
 async function onDownloadResources() {
-    // 添加 loading
-    addLoading('正在打包...')
+    addLoading('正在打包...') // 添加 loading
     setTimeout(rmLoading, 60 * 1000) // 超时时间
 
     let log = '' // 正常日志
-    let logEmpty = '' // 内容为空的文件日志
+    let logEmpty = '' // 空内容的文件日志
+    let logExcluded = '' // 被排除的文件日志
     let logEncoding = '' // 有编码的文件日志
 
     // 排重
@@ -223,22 +238,22 @@ async function onDownloadResources() {
         let url = v.url
         let type = v.type
 
-        // 排除 data 和 bold 类型
+        // 排除 data 和 bold 类型 (由程序生成的数据)
         let pre = url.substring(0, 5)
-        if (pre === 'data:' || pre === 'blob:') continue
+        if (pre === 'data:' || pre === 'blob:') {
+            logExcluded += `${url}\n` // 被排除的文件日志
+            continue
+        }
 
         await getContent(v).then(data => {
             let {content, encoding} = data
             if (!content) {
                 // 尝试在缓存中，查收数据
-                let cv = contents[`GET-${url}`]
-                if (cv) {
-                    content = cv.data.content
-                    encoding = cv.data.encoding
-                }
+                let d = contents[`GET-${url}`]
+                if (d) [content, encoding] = [d.content, d.encoding]
             }
             if (!content) {
-                logEmpty += `${type}\t${url}\n` // 记录文件内容为空的日志
+                logEmpty += `${type}\t${url}\n` // 空内容的文件日志
                 return
             }
 
@@ -260,9 +275,10 @@ async function onDownloadResources() {
     }
 
     // 打包日志
-    zip.file('log.resources.json', JSON.stringify(resObj, null, '\t')) // 全部资源 JSON
+    zip.file('log.resources.json', JSON.stringify(resObj, null, '\t')) // 所有资源数据
     zip.file('log.txt', log) // 正常日志
-    logEmpty && zip.file('log.empty.txt', logEmpty) // 内容为空的文件日志
+    logEmpty && zip.file('log.empty.txt', logEmpty) // 空内容的文件日志
+    logExcluded && zip.file('log.excluded.txt', logExcluded) // 被排除的文件日志
     logEncoding && zip.file('log.encoding.txt', logEncoding) // 有编码的文件日志
 
     // 生成 zip 包，并下载文件
@@ -271,11 +287,6 @@ async function onDownloadResources() {
     }).catch(err => console.warn('zip generateAsync error:', err))
 
     rmLoading()  // 关闭 loading
-}
-
-// 根据"获取的所有 HAR 日志"下载资源
-async function onDownloadHar() {
-
 }
 
 // 重新载入页面
@@ -303,7 +314,8 @@ function onClear() {
     requestNum = 0 // 总请求数
     totalSize = 0 // 总文件大小
     uriArr = [] // 排重地址
-    contents = {} // 记录所有资源内容
+    requests = {} // 所有资源请求
+    contents = {} // 所有资源内容
     excluded = {} // 被排除的重复请求
     navUrl = '' // 当前访问链接
     urlArr = [] // 所有访问链接
@@ -312,7 +324,7 @@ function onClear() {
     statEl.innerText = ''
     resNumEl.innerText = ''
     harNumEl.innerText = ''
-    itemsEl.innerText = ''
+    itemsEl.innerText = '' // 清空表格
     closeDialog() // 关闭对话框
 
     table_empty.style.display = 'flex'
