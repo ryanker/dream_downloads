@@ -132,7 +132,7 @@ function onDownloadHar() {
 // 通过 har 日志打包下载数据
 async function downloadByHar(harArr, name, isCache) {
     addLoading('正在打包...') // 添加 loading
-    setTimeout(rmLoading, 60 * 1000) // 超时时间
+    setTimeout(rmLoading, 300 * 1000) // 超时时间
 
     let log = '' // 正常日志
     let logEmpty = '' // 空内容的文件日志
@@ -225,7 +225,7 @@ async function downloadByHar(harArr, name, isCache) {
 // 下载资源 (从资源列表中获取) todo: Firefox 未实现此接口
 async function onDownloadResources() {
     addLoading('正在打包...') // 添加 loading
-    setTimeout(rmLoading, 60 * 1000) // 超时时间
+    setTimeout(rmLoading, 300 * 1000) // 超时时间
 
     let log = '' // 正常日志
     let logEmpty = '' // 空内容的文件日志
