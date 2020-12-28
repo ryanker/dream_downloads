@@ -15,6 +15,18 @@
 
 4、点击 "下载资源" 保存全部网页资源；
 
+### 日志说明 (ZIP 压缩包中的日志文件，如无特别需要，建议删除)
+```text
+log.txt // 打包成功的正常日志
+log.empty.txt // 获取失败的链接日志
+log.excluded.txt // 被排除的 data 和 blob 类型资源，这是有 JS 程序生成的数据
+log.encoding.txt // 被浏览器 base64 编码过的链接
+log.resources.json // 浏览器获取的资源列表 （目前 Firefox 不支持这 API）
+log.requests.json // 详细的浏览器请求记录，包含 cookie 和 一些服务器反馈信息，为信息安全考虑，别随意传播
+log.har.json // 详细的 HAR 日志记录，包含 cookie 和 一些服务器反馈信息，为信息安全考虑，别随意传播
+log.repeat.json // 重复请求的链接
+```
+
 ### 统计打包文件数量是否正确
 ```shell script
 # 统计当前目录下文件数（包括子目录）
