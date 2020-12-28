@@ -1,5 +1,14 @@
 'use strict'
-
+/**
+ * 目前功能，应该足够常用下载资源使用，还有一些想开发的小众功能，暂时没时间，先做个备忘记录。
+ * 待开发：
+ * 1、筛选功能，可根据 方法、域名，文件类型，文件大小筛选
+ * 2、改进部分资源获取失败问题，可尝试自己写程序，去下载这些资源
+ * 3、打包前格式化代码功能。可以使用库：https://github.com/beautify-web/js-beautify
+ * 4、设置功能，比如：关闭打包日志功能
+ * 5、增加 html 日志功能，方便在这页面查看下载资源细节，还可查看资源链接和图片细节
+ * @ 2020.12.28 Ryan（等有空再开发吧）
+ */
 const isFirefox = navigator.userAgent.includes("Firefox")
 const devtools = chrome.devtools
 
