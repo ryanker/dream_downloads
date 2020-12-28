@@ -676,17 +676,15 @@ function getZipName(url, mimeType, method, isFull) {
     } catch (e) {
     }
     let host = filterHan(u.host) || '-'
-    let zipName = host + '/' + getDir(u.pathname) + getFixFilename(u.pathname, mimeType)
+    let zipName = getDir(u.pathname) + getFixFilename(u.pathname, mimeType)
     if (isFull) {
-        let protocol = u.protocol
-        if (protocol === 'http:' || protocol === 'https:') protocol = ''
-        else {
-            protocol = protocol.replace(/[^\w\-]/, '')
-            if (protocol) protocol = protocol + '/'
-        }
-        return (method ? method + '-' : '') + protocol + zipName
+        let protocol = ['http:', 'https:'].includes(u.protocol) ? '' : u.protocol.replace(/[^\w\-]/, '')
+        if (method) method = method + '-'
+        if (protocol) protocol = protocol + '/'
+        if (host) host = host + '/'
+        return method + protocol + host + zipName
     }
-    return zipName
+    return (host || '') + '/' + zipName
 }
 
 // 修正最常见的类型即可，避免画蛇添足
