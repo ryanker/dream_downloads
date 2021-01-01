@@ -244,23 +244,30 @@ input[type=radio], input[type=checkbox] {
     align-items: center;
 }
 
-#table_head {
+@media only screen and (max-width: 1000px) {
+    #head_right {
+        position: static;
+        top: auto;
+        right: auto;
+    }
+}
+
+#table_head, #table_body {
     position: fixed;
     left: 0;
-    top: 40px;
     width: 100%;
     min-width: 1000px;
+}
+
+#table_head {
+    top: 40px;
     height: 26px;
     background: #F0F0F0;
 }
 
 #table_body {
-    position: fixed;
-    left: 0;
     bottom: 0;
     top: 66px;
-    width: 100%;
-    min-width: 1000px;
     overflow: auto;
 }
 
