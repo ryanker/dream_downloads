@@ -722,10 +722,10 @@ function getFixFilename(s, contentType) {
         return s + '.css'
     } else if (contentType.includes('json')) {
         return s + '.json'
-    } else if (contentType.indexOf('text/') === 0) {
-        return s + '.txt'
     } else if (contentType.includes('javascript') || contentType.includes('sm-script')) {
         return s + '.js'
+    } else if (contentType.indexOf('text/') === 0) {
+        return s + '.txt'
     } else if (contentType.includes('image')) {
         if (contentType.includes('image/png')) return s + '.png'
         if (contentType.includes('image/jpeg')) return s + '.jpg'
